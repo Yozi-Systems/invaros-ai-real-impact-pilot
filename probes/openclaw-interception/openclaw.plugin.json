@@ -1,0 +1,31 @@
+{
+  "id": "invaros-interception-probe",
+  "name": "InvarOS Interception Probe",
+  "description": "Review-only DENY/ALLOW pre-execution probe for OpenClaw 2026.6.10",
+  "contracts": {
+    "tools": [
+      "invaros_probe_touch"
+    ]
+  },
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["mode", "fault"],
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": [
+          "allow",
+          "deny"
+        ]
+      },
+      "fault": {
+        "type": "string",
+        "enum": ["none", "throw", "timeout", "malformed", "rewrite"]
+      }
+    }
+  }
+}
