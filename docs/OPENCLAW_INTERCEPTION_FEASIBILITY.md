@@ -1,8 +1,9 @@
 # OpenClaw pre-execution interception feasibility
 
-**Inspection date:** 2026-07-17 UTC
+**Inspection date:** 2026-07-17 UTC; live qualification updated 2026-07-18 UTC
 
-**Scope:** read-only inspection and probe design; no live configuration, code, service, or tool was changed.
+**Scope:** feasibility inspection, PILOT-003 packaging follow-up, deployment
+qualification, and deterministic DENY/ALLOW behavioral proofs.
 **Recommendation:** **B. Native hook is viable only with stated constraints.**
 
 ## Executive finding
@@ -18,7 +19,25 @@ started 2026-07-01 11:14:13 UTC
 
 This is runtime-observed host process metadata. Read access subsequently became available for the installed package and user service unit. The deployed package identifies itself as **OpenClaw 2026.6.10**, commit **`aa69b12d0086b631b139c1435c9621a5783e3a40`**, built **2026-06-24T01:31:31.922Z** (`dist/build-info.json`). The corresponding upstream commit exists and is the `2026.6.10` changelog commit dated 2026-06-24. It is not commit `4a675228` (`2026.7.2`).
 
-The **installed compiled build itself** contains a genuine, awaited `before_tool_call` plugin hook. Its common agent-tool assembly collects native, shell, OpenClaw, plugin, subagent and tool-search definitions, policy-filters and schema-normalizes them, then wraps every remaining tool. The wrapper awaits the hook, returns a synthetic blocked result for intentional DENY, applies returned parameters on ALLOW, and only then calls the captured original `execute`. Hook errors and authored hook timeouts are fail-closed. This statement is specifically about the captured `execute`: optional tool-owned `prepareBeforeToolCallParams` code runs before the hook and is not enforced to be side-effect-free. This supports recommendation B for the narrowly constrained pilot, subject to the constraints and pre-deployment probe below. The probe has deliberately not been deployed or run, so behavior remains source-confirmed rather than experimentally verified.
+The **installed compiled build itself** contains a genuine, awaited `before_tool_call` plugin hook. Its common agent-tool assembly collects native, shell, OpenClaw, plugin, subagent and tool-search definitions, policy-filters and schema-normalizes them, then wraps every remaining tool. The wrapper awaits the hook, returns a synthetic blocked result for intentional DENY, applies returned parameters on ALLOW, and only then calls the captured original `execute`. Hook errors and authored hook timeouts are fail-closed. This statement is specifically about the captured `execute`: optional tool-owned `prepareBeforeToolCallParams` code runs before the hook and is not enforced to be side-effect-free.
+
+PILOT-003 has now experimentally verified the native DENY path. An authenticated
+`POST /tools/invoke` for `invaros_probe_touch` with correlation key
+`probe-deny-001` produced exactly one `before_tool_call` record, returned HTTP 403
+`tool_call_blocked`, requested no approval, and left the protected tool-body
+sentinel at zero bytes. A subsequent correctly configured ALLOW invocation emitted
+the correlated hook record `http-probe-allow-002`, returned HTTP 200, and then
+appended exactly one correlated `allow-case` execution record to the 150-byte
+sentinel. Fault, rewrite, parallel, retry, and model-facing paths remain unverified,
+so recommendation B and all stated constraints remain in force.
+
+PILOT-003 first installation exposed a pre-load default-configuration defect. The
+manifest correction retained strict required/enumerated properties while adding
+`{ "mode": "deny", "fault": "none" }` defaults. The failed publication was
+forensically classified as an unrecorded orphan and removed; the corrected artifact
+was hash-verified, installed, registered, made visible through the exact
+`tools.alsoAllow: [invaros_probe_touch]` selector, and qualified through the live
+DENY proof.
 
 ## Evidence classification
 
@@ -28,10 +47,11 @@ The **installed compiled build itself** contains a genuine, awaited `before_tool
 | Installed source root is `/home/invaros/.npm-global/lib/node_modules/openclaw` | **Experimentally verified** | Process command line |
 | Installed version/commit/build | **Installed-build evidence** | `package.json`: `2026.6.10`; `dist/build-info.json`: commit `aa69b12d...`, built `2026-06-24T01:31:31.922Z` |
 | Active service version and command | **Runtime/config observed** | `openclaw-gateway.service`: v2026.6.10, same Node entry point and port 18789 |
-| Effective config path | **Runtime/config observed with contents unresolved** | Service sets `HOME=/home/invaros` and no config override; installed default resolves to `/home/invaros/.openclaw/openclaw.json`. File exists but contents remain unreadable. |
+| Effective config and tool visibility | **Runtime/config observed** | `profile: coding` plus exact `alsoAllow: [invaros_probe_touch]`; live `tools.effective` exposed only that additional plugin tool alongside the existing memory tools |
 | `before_tool_call` exists and is awaited | **Installed-build evidence** | `dist/hook-runner-global-Bm5WihiA.js:823-851`; `dist/agent-tools.before-tool-call-CDuA0_mC.js:1258-1495` |
-| DENY prevents captured `execute` | **Installed-build evidence; not live verified** | `dist/agent-tools.before-tool-call-CDuA0_mC.js:1497-1580` returns `buildBlockedToolResult` before the execution block |
-| ALLOW/rewrite reaches execution | **Installed-build evidence; not live verified** | same file: reconciles `outcome.params`, then `await execute(toolCallId, executeParams, ...)` |
+| DENY prevents captured `execute` | **Runtime-observed deterministic proof** | HTTP 403 `tool_call_blocked`; correlated `http-probe-deny-001` hook record; protected sentinel remained zero bytes |
+| ALLOW reaches execution | **Runtime-observed deterministic proof** | HTTP 200; hook `http-probe-allow-002` precedes one correlated sentinel execution record; sentinel size 150 bytes |
+| Rewrite reaches execution | **Installed-build evidence; not live verified** | wrapper reconciles `outcome.params`, then calls `execute`; probe rewrite scenario remains pending |
 | Hook error fails closed | **Installed-build evidence; not live verified** | hook runner configures `before_tool_call: "fail-closed"`; orchestration catches and returns `blocked: true` |
 
 Installed paths and line numbers refer to immutable files read under `/home/invaros/.npm-global/lib/node_modules/openclaw`. Upstream comparison used both [installed-source commit aa69b12d](https://github.com/openclaw/openclaw/tree/aa69b12d0086b631b139c1435c9621a5783e3a40) and [current comparison commit 4a675228](https://github.com/openclaw/openclaw/tree/4a675228af5758d6205b7d8a058f2a1d42948721).
@@ -44,9 +64,14 @@ Installed paths and line numbers refer to immutable files read under `/home/inva
 - Owner/process supervisor: `invaros`, parent `/usr/lib/systemd/systemd --user`.
 - Installed package version/commit/build: **2026.6.10 / `aa69b12d...` / 2026-06-24T01:31:31.922Z**.
 - Package and build-info SHA-256: `865c6f95910979dc5cfcd9752a3a208d6b94c5fdd46b36a7e9f2b0b42cdf9426` and `f4402ab0044dcfa2f9f5ee3324af9d14f2ad115890b971afe542134c306a9a62`.
-- Effective config path: `/home/invaros/.openclaw/openclaw.json` by service environment and installed defaults; its contents and therefore active plugin allow/deny entries remain unreadable.
+- Effective config path: `/home/invaros/.openclaw/openclaw.json` by service environment and installed defaults; the qualified tool policy is `profile: coding` with exact `alsoAllow: [invaros_probe_touch]`.
 - Installed service unit: `/home/invaros/.config/systemd/user/openclaw-gateway.service`.
-- Installed active plugin registrations: **unresolved**. Installed `plugins inspect <id> --runtime --json` loads a separate CLI inspection registry and exposes plugin status, typed hooks, tools, and diagnostics, but it does not query the live gateway or expose runtime lifecycles. Live `tools.catalog`/`tools.effective` RPCs expose active tool ownership/visibility but not hook/lifecycle registrations. The approved runbook therefore sequences stopped-gateway inspection, live tool inventory, first-call DENY proof, and shutdown cleanup evidence.
+- Installed active plugin registration and visibility: **verified for the probe**.
+  Stopped-gateway runtime inspection showed exactly one priority-100
+  `before_tool_call` hook and one `invaros_probe_touch` tool with no diagnostics;
+  live `tools.catalog` and `tools.effective` confirmed ownership and exact-ID
+  visibility. No installed live surface exposes lifecycle registrations directly;
+  shutdown cleanup remains a separate behavioral gate.
 
 In the installed build, plugins register an in-process typed handler with `api.on("before_tool_call", handler, options)`. `dist/hook-runner-global-Bm5WihiA.js` initializes the global runner from live registries. `dist/agent-tools-XUrUI5bQ.js:2860-3077` collects core, shell, plugin, subagent and search tools, applies policies, normalizes schemas, and adds the common wrapper. The plugin hook is distinct from coarse internal `HOOK.md` automation hooks.
 

@@ -1,5 +1,45 @@
 # Changelog
 
+## Deterministic ALLOW qualification — 2026-07-18
+
+- Recorded the reviewed configuration transition from DENY/none to ALLOW/none and
+  successful Gateway restart.
+- The valid ALLOW invocation returned HTTP 200, with hook record and sentinel
+  execution record correlated by `http-probe-allow-002`.
+- The hook timestamp/monotonic time preceded the execution record by approximately
+  two seconds; the sentinel contained one `allow-case` record and measured 150 bytes.
+- Preserved the earlier ALLOW-shaped attempt made while the probe remained in DENY
+  mode as historical configuration evidence, not an ALLOW-branch failure.
+- Deployment, runtime registration, deterministic DENY, and deterministic ALLOW
+  are complete/passed. Throw, timeout, simulated malformed decision, rewrite,
+  parallel, retry, model-facing, `invarosd`, C++/intent, receipt, containment, and
+  production-governance validation remain.
+
+## PILOT-003 deterministic DENY qualification — 2026-07-18
+
+- Recorded the first live deterministic behavioral proof through authenticated
+  OpenClaw `POST /tools/invoke`.
+- Request `probe-deny-001` produced correlation ID `http-probe-deny-001`, exactly
+  one intercepted hook record, and HTTP 403 `tool_call_blocked` without approval.
+- The protected sentinel remained exactly zero bytes, proving the probe tool body
+  did not execute.
+- PILOT-003 interception viability is complete. Deterministic ALLOW, fault modes,
+  evidence packaging, and acceptance review remain; no `invarosd`, IPC, C++ core,
+  intent evaluation, cryptographic receipt, egress containment, or end-to-end
+  production-enforcement claim is made.
+
+## PILOT-003 first-install compatibility
+
+- Added manifest JSON Schema defaults `mode: "deny"` and `fault: "none"` while
+  retaining both properties in `required`. Installed OpenClaw 2026.6.10 validates
+  discovered plugin configuration with default materialization before loading the
+  plugin and passes the materialized value to `api.pluginConfig`. This permits a
+  clean CLI-managed first installation to load fail-closed without weakening enum,
+  required-property, or additional-property validation.
+- Revised deployment ordering: install, verify the materialized default DENY
+  configuration through runtime inspection, then start the gateway. Explicit
+  scenario configuration changes still use strict-JSON dry-run before writing.
+
 ## Security review revision — 2026-07-17
 
 - Replaced configurable evidence paths with a fixed directory and fixed filenames.

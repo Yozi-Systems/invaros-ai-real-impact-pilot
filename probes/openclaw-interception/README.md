@@ -1,6 +1,6 @@
 # OpenClaw interception probe design
 
-**Status: review-only source prepared. Do not install, link, configure, or run it against the active gateway without review and explicit approval.** No files under `/home/invaros` were created or changed during the inspection.
+**Status: reviewed and deployed for controlled evaluation. PILOT-003 interception viability is complete; deterministic DENY and ALLOW passed on 2026-07-18. Remaining runbook scenarios are pending.** Installation and execution remain operator-controlled and are not production authorization.
 
 ## Purpose
 
@@ -67,7 +67,7 @@ api.on("before_tool_call", async (event, ctx) => {
 
 The installed 2026.6.10 wrapper does not perform a new explicit abort check after the hook returns. Cancellation is therefore excluded from the authorization invariant and is not a pass/fail security control for this probe. The cancellation case records observed behavior; an ALLOW already in progress may execute after cancellation.
 
-Configuration parsing accepts exactly `mode: "allow" | "deny"` and `fault: "none" | "throw" | "timeout" | "malformed" | "rewrite"`. Missing, extra, or invalid values reject plugin loading before hook/tool registration. Logging errors reject the hook and follow the installed fail-closed error path.
+Configuration parsing accepts exactly `mode: "allow" | "deny"` and `fault: "none" | "throw" | "timeout" | "malformed" | "rewrite"`. The manifest retains both keys as required and supplies fail-closed JSON Schema defaults `mode: "deny"` and `fault: "none"`. Installed OpenClaw 2026.6.10 materializes those defaults before loading the plugin and passes the resulting exact object to the existing strict runtime parser. Empty or missing first-install config therefore becomes deterministic DENY/none; extra or invalid values still reject loading before hook/tool registration. Logging errors reject the hook and follow the installed fail-closed error path.
 The `fault` selector is startup-only operator configuration and is never accepted from model tool parameters.
 
 `fault: "malformed"` is only a **simulated malformed decision** that takes an explicit local DENY branch. This probe has no external InvarOS client or real external-decision parser and therefore does not validate such a parser.
@@ -123,6 +123,14 @@ Before deployment, record:
 5. Assert exactly one sentinel JSON line exists and matches `allow-case` and the correlated tool-call ID.
 6. Assert hook timestamp precedes execute timestamp.
 
+Observed qualification: after the reviewed transition from DENY/none to
+ALLOW/none and Gateway restart, the hook recorded `http-probe-allow-002` at
+`2026-07-18T16:26:32.615Z`; OpenClaw returned HTTP 200; the tool body appended one
+matching `allow-case` record at `2026-07-18T16:26:34.617Z`; and the sentinel became
+150 bytes. An earlier ALLOW-shaped attempt made while configuration remained DENY
+is retained as historical configuration evidence, not classified as an ALLOW
+failure.
+
 ### Parameter-rewrite run (separate from authorization acceptance)
 
 1. Use reviewed startup configuration `{ "mode": "allow", "fault": "rewrite" }`.
@@ -140,7 +148,7 @@ Repeat without any network or destructive tool:
 | Hook exception | `fault: "throw"` throws after the intercept log and before decision | fail-closed pre-execution error, zero sentinel writes, gateway healthy |
 | Authored hook timeout | `fault: "timeout"` exceeds the five-second host budget | fail-closed pre-execution error, zero sentinel writes, gateway healthy |
 | Simulated malformed decision | `fault: "malformed"` takes a local stand-in branch; no external parser exists | explicit DENY, zero sentinel writes |
-| Malformed/missing startup config | omit/add/alter a config key | plugin rejected, tool absent, no evidence-file writes, gateway healthy |
+| Default/invalid startup config | omit config, then add/alter a key | omitted config materializes DENY/none and loads; extra or invalid values reject loading; no registration-time evidence writes |
 | Cancellation during two-second wait | abort invocation | observe and record; do not use cancellation as authorization or require zero writes in ALLOW mode |
 | Parallel calls | under `{ "mode": "allow", "fault": "rewrite" }`, concurrently submit `allow-case` and direct `rewritten-case` with unique IDs | `allow-case` is rewritten and executed; direct `rewritten-case` is blocked; both hooks logged; exactly one correlated sentinel record |
 | Retry | force a retryable model/runtime condition | every attempt logged; no ungoverned execution |
@@ -148,6 +156,10 @@ Repeat without any network or destructive tool:
 ## Acceptance criteria
 
 The native boundary passes only when all of the following are evidenced on the installed runtime:
+
+Current status: deployment **COMPLETE**; runtime registration **COMPLETE**;
+deterministic DENY **PASSED**; deterministic ALLOW **PASSED**. The remaining list
+still gates complete probe/runbook acceptance.
 
 - hook log precedes every tool execute log for the target;
 - DENY, timeout, exception and the simulated malformed decision produce zero sentinel changes;
