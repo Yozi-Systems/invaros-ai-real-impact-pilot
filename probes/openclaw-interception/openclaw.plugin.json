@@ -13,18 +13,17 @@
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
-    "required": ["mode", "fault"],
+    "required": ["socketPath", "timeoutMs"],
     "properties": {
-      "mode": {
+      "socketPath": {
         "type": "string",
-        "enum": [
-          "allow",
-          "deny"
-        ]
+        "default": "/run/invarosd/openclaw-authorize.sock",
+        "const": "/run/invarosd/openclaw-authorize.sock"
       },
-      "fault": {
-        "type": "string",
-        "enum": ["none", "throw", "timeout", "malformed", "rewrite"]
+      "timeoutMs": {
+        "type": "integer",
+        "default": 1000,
+        "const": 1000
       }
     }
   }

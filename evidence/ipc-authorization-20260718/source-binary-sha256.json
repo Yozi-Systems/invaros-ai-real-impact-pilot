@@ -1,0 +1,9 @@
+{
+  "/home/yozi/invarosd/build-ipc/src/invarosd": "ee25fbe54cedfadb7d6e4928714b9d8355ce178447d42e7d0dc5cca836f07a85",
+  "/home/yozi/invarosd/schemas/openclaw_authorization.v1.schema.json": "1e267681148321e9a8dd72844b1d7fb227581e0bebf0901e83fcea2c324eef53",
+  "/home/yozi/invaros-ai-real-impact-pilot/probes/openclaw-interception/index.ts": "0772eff373911aebe9a0e64aa3523fff519395abe5268bdd1a3f7909dea542b1",
+  "/home/yozi/invaros-ai-real-impact-pilot/probes/openclaw-interception/dist/index.js": "4cc7f001a18e0f875be9e1dcbb6e5bd70ccbc94a00abde876d157c284dbea961",
+  "/home/yozi/invaros-ai-real-impact-pilot/probes/openclaw-interception/protocol.ts": "5d0083a384550d0dce2b6513daad232bf685772df7be97299974a238eb744590",
+  "/home/yozi/invaros-ai-real-impact-pilot/probes/openclaw-interception/ipc-client.ts": "3957ae26c63bacf13a4c0e5723981b971f4bee5abfac00f695c9e7b25e1ff010",
+  "/home/yozi/invaros-ai-real-impact-pilot/probes/openclaw-interception/run-ipc-vertical-slice.mjs": "fbc71aeb03fb7dcb4f69fe9c97ea21dc1c29d73261de9a395e2121fe7c8fa48e"
+}

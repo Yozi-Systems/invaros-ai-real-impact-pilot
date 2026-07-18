@@ -4,6 +4,24 @@
 **Current result:** **PILOT-003 COMPLETE — PRE-EXECUTION INTERCEPTION VIABILITY PROVED**
 **Current phase:** **PILOT-004 behavioral validation in progress; deterministic DENY and ALLOW passed**
 
+## OpenClaw-to-invarosd IPC implementation milestone — 2026-07-18
+
+The repository now contains the v1 Unix-stream client and real `invarosd` service.
+A process evidence run used daemon PID 1837274 and Node client-harness PID 1837256.
+It passed daemon-side DENY/ALLOW, matching parameter digests, peer PID/UID/GID,
+replay, request-ID collision, stale denial, parallel isolation, socket cleanup, and
+daemon-unavailable fail-closed assertions. Evidence is in
+`evidence/ipc-authorization-20260718/`.
+
+This is real-daemon IPC evidence, not a new live OpenClaw native-hook
+qualification. Deployment/restart was blocked because `sudo -n true` returned
+`sudo: a password is required`. Prior PILOT-003 evidence remains unchanged; the
+new artifact has not yet produced live Gateway HTTP 403/200 evidence.
+
+The narrow policy is not TBOM evaluation, a cryptographic receipt, kernel
+mediation, hostile-runtime integrity, tamper-proof logging, OpenWrt qualification,
+or general production readiness.
+
 The earlier blocked and failed-install states below are retained as chronological
 engineering history. They are superseded by the corrected installation,
 deployment qualification, and deterministic DENY result recorded here.

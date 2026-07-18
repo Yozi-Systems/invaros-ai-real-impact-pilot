@@ -1,0 +1,7 @@
+import test from "node:test";import assert from "node:assert/strict";
+import {buildAuthorizationRequest,parseAuthorizationResponse} from "../dist/protocol.js";
+const event={toolName:"invaros_probe_touch",params:{marker:"allow-case"},toolCallId:"tc",runId:"run"};
+test("request serialization and digest",()=>{const r=buildAuthorizationRequest(event,1000,"req");assert.equal(r.paramsByteLength,23);assert.equal(r.paramsSha256.length,64);assert.match(r.body.toString(),/"sentAtUnixMs":1000/)});
+const valid={protocol:"invaros.openclaw.authorization.v1",messageType:"authorization_response",requestId:"req",toolCallId:"tc",decision:"ALLOW",reasonCode:"pilot.allowed_marker",message:"allowed",policyId:"pilot.openclaw.probe.v1",daemonPid:42};
+test("only exact correlated allow accepted",()=>{assert.equal(parseAuthorizationResponse(Buffer.from(JSON.stringify(valid)),"req","tc").decision,"ALLOW");for(const mutation of [{decision:"allow"},{decision:"UNKNOWN"},{requestId:"x"},{toolCallId:"x"},{protocol:"x"},{messageType:"x"},{extra:true}])assert.throws(()=>parseAuthorizationResponse(Buffer.from(JSON.stringify({...valid,...mutation})),"req","tc"));for(const key of ["decision","reasonCode","message","policyId","daemonPid"]){const x={...valid};delete x[key];assert.throws(()=>parseAuthorizationResponse(Buffer.from(JSON.stringify(x)),"req","tc"));}});
+test("deny parses but never represents allow",()=>assert.equal(parseAuthorizationResponse(Buffer.from(JSON.stringify({...valid,decision:"DENY"})),"req","tc").decision,"DENY"));

@@ -1,0 +1,50 @@
+invarosd_head=7b7907132ba279915e35eed3cf210d2444e352ad
+invarosd_status:
+## master...origin/master
+ M include/invarosd/config.h
+ M packaging/linux/invarosd/invarosd.json
+ M packaging/linux/invarosd/invarosd.service
+ M packaging/openwrt/invarosd/files/invarosd.json
+ M packaging/validate_linux_edge.sh
+ M src/CMakeLists.txt
+ M src/config.c
+ M src/multi_main.c
+ M tests/CMakeLists.txt
+?? build-demo/
+?? build-ipc-asan/
+?? build-ipc/
+?? docs/openclaw-authorization-ipc.md
+?? include/invarosd/ipc_authorization.h
+?? include/invarosd/tool_policy.h
+?? qualification/
+?? schemas/openclaw_authorization.v1.schema.json
+?? src/ipc_authorization.c
+?? src/tool_policy.c
+?? tests/test_ipc_authorization.py
+?? tests/test_tool_policy.c
+pilot_head=2ff21153ac9e2121a924dd7f17dfb1327717d5fd
+pilot_status:
+## main...origin/main
+ M docs/PILOT_003_EXECUTION_REPORT.md
+ M probes/openclaw-interception/DEPLOYMENT_RUNBOOK.md
+ M probes/openclaw-interception/README.md
+ M probes/openclaw-interception/dist/index.js
+ M probes/openclaw-interception/index.ts
+ M probes/openclaw-interception/openclaw.plugin.json
+ M probes/openclaw-interception/package.json
+?? agent-tools-policy-inspection.txt
+?? evidence/ipc-authorization-20260718/
+?? evidence/pilot-003/
+?? probes/openclaw-interception/dist/ipc-client.js
+?? probes/openclaw-interception/dist/protocol.js
+?? probes/openclaw-interception/finalize-ipc-evidence.mjs
+?? probes/openclaw-interception/ipc-client.ts
+?? probes/openclaw-interception/node_modules/
+?? probes/openclaw-interception/package-lock.json
+?? probes/openclaw-interception/prepare-patched-staging.sh
+?? probes/openclaw-interception/protocol.ts
+?? probes/openclaw-interception/run-ipc-vertical-slice.mjs
+?? probes/openclaw-interception/tests/
+?? probes/openclaw-interception/verify-failed-orphan.mjs
+?? tool-policy-complete-review.txt
+

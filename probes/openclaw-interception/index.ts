@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
+import { authorizeToolCall } from "./ipc-client.js";
 
 const PROBE_DIRECTORY = "/run/user/1001/invaros-openclaw-interception-probe";
 const HOOK_LOG_NAME = "hook-log.jsonl";
@@ -18,8 +19,8 @@ const MAX_RECORD_BYTES = 4_096;
 const EXPECTED_UID = 1_001;
 
 type ProbeConfig = {
-  mode: "allow" | "deny";
-  fault: "none" | "throw" | "timeout" | "malformed" | "rewrite";
+  socketPath: string;
+  timeoutMs: number;
 };
 
 type FileInvariant = {
@@ -47,15 +48,9 @@ function requireConfig(value: unknown): ProbeConfig {
   const config = value as Record<string, unknown>;
   const keys = Object.keys(config).sort();
   if (
-    keys.length !== 2 ||
-    keys[0] !== "fault" ||
-    keys[1] !== "mode" ||
-    (config.mode !== "allow" && config.mode !== "deny") ||
-    (config.fault !== "none" &&
-      config.fault !== "throw" &&
-      config.fault !== "timeout" &&
-      config.fault !== "malformed" &&
-      config.fault !== "rewrite")
+    keys.length !== 2 || keys[0] !== "socketPath" || keys[1] !== "timeoutMs" ||
+    config.socketPath !== "/run/invarosd/openclaw-authorize.sock" ||
+    config.timeoutMs !== 1000
   ) {
     throw new Error("probe config malformed");
   }
@@ -195,10 +190,6 @@ function appendJsonLine(
   }
 }
 
-async function pause(milliseconds: number): Promise<void> {
-  await new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
-}
-
 export default definePluginEntry({
   id: "invaros-interception-probe",
   name: "InvarOS Interception Probe",
@@ -238,39 +229,35 @@ export default definePluginEntry({
 
           appendJsonLine(files.directory, files.hookLog, {
             phase: "intercepted",
-            mode: config.mode,
-            fault: config.fault,
             toolName: event.toolName,
-            params: event.params,
             toolCallId: event.toolCallId ?? null,
             runId: event.runId ?? null,
             wallTime: new Date().toISOString(),
             monotonicNs: process.hrtime.bigint().toString()
           });
 
-          if (config.fault === "throw") {
-            throw new Error("injected probe hook failure");
+          try {
+            const result = await authorizeToolCall(event, config);
+            appendJsonLine(files.directory, files.hookLog, {
+              phase: "authorization_decision", requestId: result.requestId,
+              toolCallId: result.toolCallId, toolName: event.toolName,
+              paramsByteLength: result.paramsByteLength, paramsSha256: result.paramsSha256,
+              daemonPid: result.response.daemonPid, policyId: result.response.policyId,
+              decision: result.response.decision, reasonCode: result.response.reasonCode,
+              wallTime: new Date().toISOString(), monotonicNs: process.hrtime.bigint().toString()
+            });
+            if (result.response.decision === "ALLOW") return { block: false };
+            return { block: true, blockReason: `InvarOS policy denied this tool call (${result.response.reasonCode})` };
+          } catch (error) {
+            appendJsonLine(files.directory, files.hookLog, {
+              phase: "authorization_failure", toolCallId: event.toolCallId ?? null,
+              toolName: event.toolName, errorClass: error instanceof Error ? error.name : "Error",
+              wallTime: new Date().toISOString(), monotonicNs: process.hrtime.bigint().toString()
+            });
+            return { block: true, blockReason: "InvarOS authorization unavailable" };
           }
-          if (config.fault === "timeout") {
-            await pause(6_000);
-            return { block: true, blockReason: "late probe timeout denial" };
-          }
-
-          await pause(2_000);
-
-          // This is only a simulated malformed decision; no external parser exists here.
-          if (config.fault === "malformed" || config.mode !== "allow") {
-            return { block: true, blockReason: "InvarOS interception probe denial" };
-          }
-          if (config.fault === "rewrite") {
-            if ((event.params as { marker?: unknown }).marker !== "allow-case") {
-              return { block: true, blockReason: "probe rewrite requires allow-case" };
-            }
-            return { block: false, params: { ...event.params, marker: "rewritten-case" } };
-          }
-          return { block: false };
         },
-        { priority: 100, timeoutMs: 5_000 }
+        { priority: 100, timeoutMs: 1_250 }
       );
 
       api.registerTool({
@@ -286,10 +273,7 @@ export default definePluginEntry({
         },
         async execute(toolCallId, params) {
           const marker = (params as { marker?: unknown }).marker;
-          const markerIsValid =
-            config.fault === "rewrite"
-              ? marker === "rewritten-case"
-              : marker === "deny-case" || marker === "allow-case";
+          const markerIsValid = marker === "deny-case" || marker === "allow-case" || marker === "rewritten-case";
           if (!markerIsValid) {
             throw new Error("invalid probe marker for configured scenario");
           }

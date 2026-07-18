@@ -1,6 +1,29 @@
 # OpenClaw interception probe design
 
-**Status: reviewed and deployed for controlled evaluation. PILOT-003 interception viability is complete; deterministic DENY and ALLOW passed on 2026-07-18. Remaining runbook scenarios are pending.** Installation and execution remain operator-controlled and are not production authorization.
+**Status:** the historical PILOT-003 native-hook DENY/ALLOW evidence remains
+valid. The repository probe now uses `invaros.openclaw.authorization.v1` IPC.
+Real-daemon client/process tests pass; deployment of this new artifact into the
+live UID-1001 gateway is not yet qualified because this session cannot authenticate
+through sudo.
+
+## IPC authorization behavior
+
+The priority-100 hook sends one length-prefixed JSON request to
+`/run/invarosd/openclaw-authorize.sock` and waits at most 1,000 ms inside a 1,250
+ms host budget. Only an exact, closed, correlated uppercase `ALLOW` returns
+`{ block: false }`. Every other response or transport outcome blocks.
+
+The plugin contains no marker policy and never invokes or retries the tool. It
+logs IDs, daemon PID, policy/reason, parameter byte length, and SHA-256, but not raw
+parameters. The digest covers the exact serialized `params` bytes and proves byte
+representation equality only.
+
+Build/test with `npm run build` and `npm test`. The real-daemon client harness is
+`run-ipc-vertical-slice.mjs`. It does not substitute for live OpenClaw HTTP/native
+hook qualification.
+
+The remainder records the earlier local-decision probe. References to `mode`,
+`fault`, and the two-second pause are historical, not the current IPC artifact.
 
 ## Purpose
 
